@@ -1,40 +1,23 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import './App.css'
 import { Movies } from './Components/Movies'
-import { fetchMovies } from './services/getMovies'
+import { useMovies } from './hooks/useMovies'
 
 function App () {
-  const [searchResults, setSearchResults] = useState('')
-  const [previousQuery, setPreviousQuery] = useState('')
-  const [validationError, setValidationError] = useState(null)
+  const [query, setQuery] = useState('')
+  const { searchResults, fetchMoviesAndSetResults, validationError } = useMovies({ query })
 
-  async function validateAndSetResults (query) {
-    setPreviousQuery(query)
-    const result = await fetchMovies({ query, previousQuery })
-    if (!result) return
-    if (typeof result === 'string') return setValidationError(result)
-    setValidationError(null)
-    setSearchResults(result)
-  }
-
-  async function handleSubmit (event) {
+  function handleSubmit (event) {
     event.preventDefault()
-    const fields = new window.FormData(event.target)
-    const query = fields.get('query')
-    validateAndSetResults(query)
+    fetchMoviesAndSetResults({ query })
   }
 
-  let timerRef = null
-  function handleChange (event) {
-    const timer = 500
-    clearTimeout(timerRef)
-    timerRef = setTimeout(searchOnChange, timer, event)
-  }
-
-  async function searchOnChange (event) {
-    console.log('se busco')
-    const query = event.target.value
-    validateAndSetResults(query)
+  const timerId = useRef(null)
+  const handleChange = (event) => {
+    const newQuery = event.target.value
+    setQuery(newQuery)
+    clearTimeout(timerId.current)
+    timerId.current = setTimeout(fetchMoviesAndSetResults, 400, { query: newQuery })
   }
 
   return (
@@ -43,7 +26,7 @@ function App () {
         <h1>Buscador de películas</h1>
         <p>Busca información de tus películas favoritas.</p>
         <form action='submit' onSubmit={handleSubmit}>
-          <input onChange={handleChange} name='query' type='text' />
+          <input name='query' onChange={handleChange} value={query} />
           <button type='submit'>Buscar</button>
         </form>
         {validationError && <p>{validationError}</p>}
